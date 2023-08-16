@@ -3,24 +3,12 @@ Venom is an ARP-Poisoner that sniffs TLS requests to take advantage of SNI Leak 
 
 Venom aims to be a future complete tool capable of performing many different attacks and scans. As this is the first release, It only focuses on the SNI leak but I will be adding more and more options / attacks to the tool as the time goes by. Feel free to participate and help if you wish ! :)
 
-For now, this script is made to show the information leak that remains in the TLS protocole and more specifically in the SNI extension.
-
 # Screenshots
 
-
-# Features (14/08/2022)
-
-- Scanning Speed Mode => 1(slowest) - 5(fastest). Default value is 4 (better to let it like this as it is pretty precise and fast). You can change this value at l.16 in ```main.py``` if you feel the need to.
-
-- ARP Poisoning / Restoring
-
-- MAC address Look-up
-
-- Sniping Mode: Poison/Sniff only a specific device
-
-- Nuke Mode: Poison/Sniff all available devices
-
-- Parsed Outputs in ```sni_output.txt```
+<img src= "/IMGs/ASCII.png">
+<img src= "/IMGs/arpscan.png">
+<img src= "/IMGs/script_end.png">
+<img src= "/IMGs/outputs.png">
 
 # Installation
 
@@ -28,22 +16,64 @@ For now, this script is made to show the information leak that remains in the TL
 
 2. ```pip3 install -r requirements.txt```
 
-3. Linux / MacOS: ```sudo python3 main.py```<br/>
-   Windows: ```py main.py```
+3. Linux / MacOS: ```sudo python3 main.py --help```<br/>
+   Windows: ```py main.py --help```
+
+# Instructions
+
+Usage: ```sudo python3 main.py [-n] [-s] [-ss SCAN_SPEED] [-ml] [-ir IP_RANGE]```
+
+Ex. of Sniper Usage: ```sudo python3 main.py -s -ml``` 
+*(Sniping mode selected + Mac Lookup when scanning to give more informations about the targets)*
+
+Ex. of Nuke Usage: ```sudo python3 main.py -n -ss 3 -ml```
+*(Nuke mode selected + Reducing ARP scan speed mode to be more precise + Mac Lookup when scanning)*
+
+***Only Sniper or Nuke arg is required everything else is optional or has a default value.***
+
+**Arguments List:**
+
+- ```-h / --help```          => Shows / Explain all arguments utility
+
+- ```-s / --sniper```        => Sniper attack mode
+
+- ```-n / --nuke```          => Nuke attack mode
+
+- ```-ss / --scan_speed```   => ARP Scan Speed: 1 - 5 (Default: 4)
+
+- ```-ml / --mac_lookup```   => Mac Lookup when ARP Scanning
+
+- ```-ir / --ip_range```     => Targeted IP range (Default: 192.168.1.1/24)
+
+# Features (14/08/2022)
+
+- ARP Scanning
+
+- Scanning Speed Mode => 1(slowest) - 5(fastest).
+
+- ARP Poisoning / Restoring
+
+- MAC address Look-up
+
+- Sniping Mode: Poison/Sniff only a specific device
+
+- Nuke Mode: Poison/Sniff all available devices on the network
+
+- Multiple clean Output files named by the IP of the target
 
 # Coming Next
 
-1. Classic DNS Poisoning 
+- Classic DNS Poisoning 
 
-2. Simple profiling
+- Simple profiling
 
-3. Colors for the CLI Outputs
+- Colors for the CLI Outputs
 
-4. Target Scanning for exploits
+- Target Scanning for exploits
 
-5. All basics MiTM attacks
+- All basics MiTM attacks
 
-6. Multiple Output files for each target
+- Parsed Output file for each target [DONE]
 
 # Legal
  This software is designed to perform network security testing.<br/>

