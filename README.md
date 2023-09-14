@@ -33,16 +33,16 @@ This aims to be a future multi-tool capable of performing many different attacks
 
 Usage: ```sudo main.py [-h] [-n] [-s] [-ss SCAN_SPEED] [-ml] [-ir IP_RANGE] [-sni | -mac | -sc] [-iface IFACE]```
 
-Ex. SNI Leak Sniffing (SNIPER MODE): ```sudo python3 main.py -sni --sniper -ml``` 
+Ex. SNI Leak Sniffing (SNIPER MODE): ```sudo python3 main.py -sni --sniper -ml``` <br/>
 *(Sniping mode selected + Mac Lookup when scanning for more details about the targets)*
 
-Ex. SNI Leak Sniffing (NUKE MODE): ```sudo python3 main.py -sni --nuke -ss 3 -ml```
+Ex. SNI Leak Sniffing (NUKE MODE): ```sudo python3 main.py -sni --nuke -ss 3 -ml```<br/>
 *(Nuke mode selected + Reducing ARP scan speed mode to be more precise + Mac Lookup when scanning)*
 
-Ex. MAC Spoofing: ```sudo python3 main.py -mac -iface eth0```
+Ex. MAC Spoofing: ```sudo python3 main.py -mac -iface eth0```<br/>
 *(MAC Spoofing mode selected + specifying wich iface to use)*
 
-Ex. ARP Scanner: ```sudo python3 main.py -sc -ml```
+Ex. ARP Scanner: ```sudo python3 main.py -sc -ml```<br/>
 *(Scanner mode selected + Mac Lookup)*
 
 **Arguments List:**
@@ -67,7 +67,7 @@ Ex. ARP Scanner: ```sudo python3 main.py -sc -ml```
 
 - ```-iface / --iface```     => Iface used for Mac Spoofing (Default: eth0)
 
-# Features (14/08/2022)
+# Features (14/09/2023)
 
 - ARP Scanning
 
