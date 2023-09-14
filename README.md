@@ -1,7 +1,16 @@
-# Venom-Sniffer
-Venom is an ARP-Poisoner that sniffs TLS requests to take advantage of SNI Leak and display all targets DNS traffic even if it is encrypted. Venom can target a specific device or the entire network by choosing between the 2 attack modes => Sniper / Nuke respectively. <br/>
+# Venom-MiTM
+Venom is a multi-tool that can set up a MiTM and sniffs TLS requests to take advantage of SNI Leak and display all targets DNS traffic even if it is encrypted. 
+As the SNI sniffing attack is currently the main one, it is not the only one. Venom can also be used as a: 
 
-Venom aims to be a future complete tool capable of performing many different attacks and scans. As this is the first release, It only focuses on the SNI leak but I will be adding more and more options / attacks to the tool as the time goes by. Feel free to participate and help if you wish ! :)
+- MAC-Spoofer
+
+- ARP Network Scanner (Host discovery)
+
+- ARP-Poisoner
+
+Venom can target a specific device or the entire network by choosing between the 2 attack modes => Sniper / Nuke respectively. (For SNI Sniffing and ARP-Poisoning) <br/>
+
+This aims to be a future multi-tool capable of performing many different attacks and scans. As this is the first release, It mainly focuses on the SNI leak but I will be adding more and more options / attacks / scans to Venom as the time goes by. Feel free to participate and help if you wish ! :)
 
 # Screenshots
 
@@ -16,28 +25,39 @@ Venom aims to be a future complete tool capable of performing many different att
 
 2. ```pip3 install -r requirements.txt```
 
-3. Linux / MacOS: ```sudo python3 main.py --help```<br/>
-   Windows: ```py main.py --help```
+3. Enable IPv4 packet forwarding: ```sysctl -w net.ipv4.ip_forward=1```
+
+4. Linux / MacOS: ```sudo python3 main.py --help```<br/>
 
 # Instructions
 
-Usage: ```sudo python3 main.py [-n] [-s] [-ss SCAN_SPEED] [-ml] [-ir IP_RANGE]```
+Usage: ```sudo main.py [-h] [-n] [-s] [-ss SCAN_SPEED] [-ml] [-ir IP_RANGE] [-sni | -mac | -sc] [-iface IFACE]```
 
-Ex. of Sniper Usage: ```sudo python3 main.py -s -ml``` 
-*(Sniping mode selected + Mac Lookup when scanning to give more informations about the targets)*
+Ex. SNI Leak Sniffing (SNIPER MODE): ```sudo python3 main.py -sni --sniper -ml``` 
+*(Sniping mode selected + Mac Lookup when scanning for more details about the targets)*
 
-Ex. of Nuke Usage: ```sudo python3 main.py -n -ss 3 -ml```
+Ex. SNI Leak Sniffing (NUKE MODE): ```sudo python3 main.py -sni --nuke -ss 3 -ml```
 *(Nuke mode selected + Reducing ARP scan speed mode to be more precise + Mac Lookup when scanning)*
 
-***Only Sniper or Nuke arg is required everything else is optional or has a default value.***
+Ex. MAC Spoofing: ```sudo python3 main.py -mac -iface eth0```
+*(MAC Spoofing mode selected + specifying wich iface to use)*
+
+Ex. ARP Scanner: ```sudo python3 main.py -sc -ml```
+*(Scanner mode selected + Mac Lookup)*
 
 **Arguments List:**
 
 - ```-h / --help```          => Shows / Explain all arguments utility
 
-- ```-s / --sniper```        => Sniper attack mode
+- ```-sni / --sni```         => SNI Leak Sniffing Attack (MiTM)
 
-- ```-n / --nuke```          => Nuke attack mode
+- ```-mac / --mac_spoofer``` => MAC Spoofing Attack
+
+- ```-sc / --scan```         => ARP Scanning Only
+
+- ```-s / --sniper```        => Sniper ARP Poisoning mode (Only with -sni)
+
+- ```-n / --nuke```          => Nuke ARP Poisoning mode (Only with -sni)
 
 - ```-ss / --scan_speed```   => ARP Scan Speed: 1 - 5 (Default: 4)
 
@@ -45,13 +65,17 @@ Ex. of Nuke Usage: ```sudo python3 main.py -n -ss 3 -ml```
 
 - ```-ir / --ip_range```     => Targeted IP range (Default: 192.168.1.1/24)
 
+- ```-iface / --iface```     => Iface used for Mac Spoofing (Default: eth0)
+
 # Features (14/08/2022)
 
 - ARP Scanning
 
 - Scanning Speed Mode => 1(slowest) - 5(fastest).
 
-- ARP Poisoning / Restoring
+- MiTM by ARP Poisoning
+
+- MAC Spoofing
 
 - MAC address Look-up
 
@@ -63,17 +87,17 @@ Ex. of Nuke Usage: ```sudo python3 main.py -n -ss 3 -ml```
 
 # Coming Next
 
-- Classic DNS Poisoning 
-
 - Simple profiling
 
 - Colors for the CLI Outputs
 
 - Target Scanning for exploits
 
-- All basics MiTM attacks
+- Display Target Hostname [✅]
 
-- Parsed Output file for each target [DONE]
+- MAC Spoofing [✅]
+
+- Parsed Output file for each target [✅]
 
 # Legal
  This software is designed to perform network security testing.<br/>

